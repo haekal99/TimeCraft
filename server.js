@@ -377,6 +377,12 @@ app.get('/api/history', requireSession, (request, response) => {
 });
 
 const publicPages = new Set(['gaming.html', 'gold.html', 'index.html', 'journal.html', 'jurnal.html', 'login.html', 'profile.html', 'register.html', 'study.html']);
+
+// Handle rute utama (/) secara eksplisit
+app.get('/', (request, response) => {
+    response.sendFile(join(rootDir, 'login.html')); // Ganti 'login.html' ke 'index.html' jika ingin halaman utama lain
+});
+
 app.use((request, response, next) => {
     let decodedPath;
     try {
@@ -385,13 +391,15 @@ app.use((request, response, next) => {
         return response.status(404).json({ error: 'File tidak ditemukan.' });
     }
     if (decodedPath.includes('%')) return response.status(404).json({ error: 'File tidak ditemukan.' });
-    const requestedPath = decodedPath === '/' ? '/index.html' : decodedPath;
+    
+    const requestedPath = decodedPath;
     const filePath = resolve(rootDir, `.${requestedPath}`);
     const relativePath = relative(rootDir, filePath).replace(/\\/g, '/');
     const isPublicAsset = /^(assets|css|js)\//.test(relativePath);
+    
     if (!publicPages.has(relativePath) && !isPublicAsset) return response.status(404).json({ error: 'File tidak ditemukan.' });
     next();
-}, express.static(rootDir, { index: 'index.html', dotfiles: 'deny', fallthrough: true, maxAge: 0 }));
+}, express.static(rootDir, { dotfiles: 'deny', fallthrough: true, maxAge: 0 }));
 
 app.use((request, response) => response.status(404).json({ error: 'Endpoint tidak ditemukan.' }));
 app.use((error, request, response, next) => {

@@ -378,11 +378,11 @@ app.get('/api/history', requireSession, (request, response) => {
 
 const publicPages = new Set(['gaming.html', 'gold.html', 'index.html', 'journal.html', 'jurnal.html', 'login.html', 'profile.html', 'register.html', 'study.html']);
 
-// Handle rute utama (/) secara eksplisit
 app.get('/', (request, response) => {
-    response.sendFile(join(rootDir, 'login.html')); // Ganti 'login.html' ke 'index.html' jika ingin halaman utama lain
+    response.sendFile(resolve(rootDir, 'login.html'));
 });
 
+// Middleware untuk menyajikan file statis dan halaman publik
 app.use((request, response, next) => {
     let decodedPath;
     try {
@@ -391,13 +391,19 @@ app.use((request, response, next) => {
         return response.status(404).json({ error: 'File tidak ditemukan.' });
     }
     if (decodedPath.includes('%')) return response.status(404).json({ error: 'File tidak ditemukan.' });
-    
-    const requestedPath = decodedPath;
-    const filePath = resolve(rootDir, `.${requestedPath}`);
+
+    // Jika mengakses root '/'
+    if (decodedPath === '/') return next();
+
+    const filePath = resolve(rootDir, `.${decodedPath}`);
     const relativePath = relative(rootDir, filePath).replace(/\\/g, '/');
-    const isPublicAsset = /^(assets|css|js)\//.test(relativePath);
-    
-    if (!publicPages.has(relativePath) && !isPublicAsset) return response.status(404).json({ error: 'File tidak ditemukan.' });
+
+    // Izinkan jika merupakan file halaman publik ATAU file aset (.css, .js, gambar, font, dll)
+    const isPublicAsset = /^(assets|css|js)\//.test(relativePath) || /\.(css|js|png|jpg|jpeg|gif|svg|ico|json)$/i.test(relativePath);
+
+    if (!publicPages.has(relativePath) && !isPublicAsset) {
+        return response.status(404).json({ error: 'File tidak ditemukan.' });
+    }
     next();
 }, express.static(rootDir, { dotfiles: 'deny', fallthrough: true, maxAge: 0 }));
 

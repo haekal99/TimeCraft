@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeCraft - Quest Log</title>
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800&family=Press+Start+2P&family=Rajdhani:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Eksternal -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <main id="login-screen" class="login-screen">
+        <div class="login-art" aria-hidden="true">
+            <div class="pixel-sun"></div>
+            <div class="mountain mountain-back"></div>
+            <div class="mountain mountain-front"></div>
+            <div class="pixel-grid"></div>
+            <span class="orbit orbit-one"></span>
+            <span class="orbit orbit-two"></span>
+            <div class="game-badge"><i class="fa-solid fa-bolt"></i> SEASON 01</div>
+        </div>
+        <section class="login-panel" aria-labelledby="login-title">
+            <div class="login-brand"><span class="brand-mark"><i class="fa-solid fa-hourglass-start"></i></span> TIMECRAFT</div>
+            <div class="eyebrow"><span></span> PLAYER ACCESS <span></span></div>
+            <h1 id="login-title">Ready to craft<br><strong>your day?</strong></h1>
+            <p class="login-copy">Masuk ke markasmu dan ubah setiap jam menjadi progress yang terasa.</p>
+            <form id="login-form" class="login-form">
+                <label for="player-name">Nama pemain</label>
+                <div class="input-wrap"><i class="fa-solid fa-user-astronaut"></i><input id="player-name" type="text" placeholder="Masukkan nama pemain" autocomplete="username" required></div>
+                <label for="player-code">Kode akses</label>
+                <div class="input-wrap"><i class="fa-solid fa-key"></i><input id="player-code" type="password" placeholder="Masukkan kode akses" autocomplete="current-password" required><button type="button" id="toggle-code" aria-label="Tampilkan kode akses"><i class="fa-solid fa-eye"></i></button></div>
+                <div class="login-options"><label class="remember"><input id="remember-player" type="checkbox" checked><span></span> Ingat aku</label></div>
+                <button class="login-button" type="submit"><span>ENTER THE GAME</span><i class="fa-solid fa-arrow-right"></i></button>
+                <p id="login-message" class="login-message" role="status"></p>
+            </form>
+            <button id="show-register" class="text-button" type="button">Player baru? Buat akun</button>
+            <div class="login-footer"><span><i class="fa-solid fa-shield-halved"></i> Progress tersimpan lokal</span><span>v1.0.0</span></div>
+        </section>
+    </main>
+
+    <main id="register-screen" class="login-screen is-hidden">
+        <div class="login-art register-art" aria-hidden="true">
+            <div class="pixel-sun"></div><div class="mountain mountain-back"></div><div class="mountain mountain-front"></div><div class="pixel-grid"></div>
+            <div class="game-badge"><i class="fa-solid fa-shield-halved"></i> NEW PLAYER</div>
+        </div>
+        <section class="login-panel" aria-labelledby="register-title">
+            <div class="login-brand"><span class="brand-mark"><i class="fa-solid fa-hourglass-start"></i></span> TIMECRAFT</div>
+            <div class="eyebrow"><span></span> PLAYER REGISTRATION <span></span></div>
+            <h1 id="register-title">Create your<br><strong>player profile.</strong></h1>
+            <p class="login-copy">Bangun profilmu, susun quest, dan mulai progres harianmu.</p>
+            <form id="register-form" class="login-form">
+                <label for="register-name">Nama pemain</label>
+                <div class="input-wrap"><i class="fa-solid fa-user-astronaut"></i><input id="register-name" type="text" placeholder="Contoh: Tri Player" required></div>
+                <label for="register-code">Buat kode akses</label>
+                <div class="input-wrap"><i class="fa-solid fa-key"></i><input id="register-code" type="password" placeholder="Minimal 8 karakter" minlength="8" maxlength="128" required></div>
+                <button class="login-button" type="submit"><span>CREATE PLAYER</span><i class="fa-solid fa-user-plus"></i></button>
+                <p id="register-message" class="login-message" role="status"></p>
+            </form>
+            <button id="show-login" class="text-button" type="button">Sudah punya akun? Kembali login</button>
+        </section>
+    </main>
+
+    <main id="dashboard-screen" class="dashboard-screen is-hidden">
+        <header class="dashboard-header">
+            <div class="logo"><h1><i class="fa-solid fa-hourglass-start"></i> TimeCraft</h1><span class="season-chip">SEASON 01</span></div>
+            <div class="dashboard-tools"><span class="dashboard-player-name"><span class="dashboard-avatar"><i class="fa-solid fa-user-astronaut"></i><b></b></span><span class="player-hud-copy"><small>PLAYER · LV.24</small><strong id="dashboard-player-name">Player</strong><em>TIME ARCHITECT</em></span></span><button id="dashboard-theme-toggle" class="theme-toggle" type="button" title="Ganti tema"><i class="fa-solid fa-sun"></i><span>Light</span></button><button id="dashboard-logout" class="logout-button" type="button"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></button></div>
+        </header>
+        <section class="dashboard-hero">
+            <div><span class="eyebrow-label"><i class="fa-solid fa-signal"></i> COMMAND CENTER ONLINE</span><h2 id="dashboard-greeting-full">Selamat datang, Player!</h2><p id="dashboard-motivation">Setiap quest kecil membangun kemenangan besar.</p><div class="hero-bars"><div class="hero-bar"><span><i class="fa-solid fa-heart"></i> ENERGY</span><div><b id="dashboard-energy-bar"></b></div><em id="dashboard-energy-label">82 / 100</em></div><div class="hero-bar exp-bar"><span><i class="fa-solid fa-bolt"></i> DAILY EXP</span><div><b id="dashboard-exp-bar"></b></div><em id="dashboard-exp-label">25%</em></div></div></div>
+            <div class="hero-clock"><strong id="dashboard-clock">00:00:00</strong><span id="dashboard-date">Senin, 1 Januari 2026</span></div>
+        </section>
+        <section class="main-nav-section"><div class="section-heading"><span class="eyebrow-label">CHOOSE YOUR QUEST</span><h2>Main Menu</h2></div><div class="main-nav-grid">
+            <button class="nav-card nav-card-journal" id="open-journal" type="button"><span class="nav-card-icon"><i class="fa-solid fa-book-open"></i></span><span class="nav-card-content"><strong>TimeCraft</strong><small>Jurnal & Log Harian</small><em>13 quest slot · reflection · history</em></span><i class="fa-solid fa-arrow-right nav-arrow"></i></button>
+            <button class="nav-card nav-card-study" type="button" id="study-card"><span class="nav-card-icon"><i class="fa-solid fa-graduation-cap"></i></span><span class="nav-card-content"><strong>Study & Skill Hub</strong><small>Ruang Belajar & CPNS</small><em>SKD · skill upgrade · notes</em></span><i class="fa-solid fa-arrow-right nav-arrow"></i></button>
+            <button class="nav-card nav-card-game" type="button" id="game-card"><span class="nav-card-icon"><i class="fa-solid fa-gamepad"></i></span><span class="nav-card-content"><strong>Gaming Log</strong><small>Hiburan & Gaming</small><em>Track playtime · balance · fun</em></span><i class="fa-solid fa-arrow-right nav-arrow"></i></button>
+            <button class="nav-card nav-card-gold" type="button" id="gold-card"><span class="nav-card-icon"><i class="fa-solid fa-coins"></i></span><span class="nav-card-content"><strong>Financial Vault</strong><small>Keuangan & Resource</small><em>Inflow · outflow · net balance</em></span><i class="fa-solid fa-arrow-right nav-arrow"></i></button>
+            <button class="nav-card nav-card-focus" type="button" id="focus-card"><span class="nav-card-icon"><i class="fa-solid fa-stopwatch"></i></span><span class="nav-card-content"><strong>Focus Realm</strong><small>Pomodoro Timer</small><em>Deep work · focus streak · rewards</em></span><i class="fa-solid fa-arrow-right nav-arrow"></i></button>
+        </div><div class="dashboard-progress" aria-label="Daily progress"><span class="progress-icon"><i class="fa-solid fa-key"></i></span><div class="progress-track" style="display:block;width:100%;height:6px;min-height:6px;background:#1b344b;overflow:hidden"><span style="display:block;width:25%;height:6px;min-height:6px;background:#ffc857"></span></div><strong>25%</strong><button type="button" title="Lihat detail progress" aria-label="Lihat detail progress"><i class="fa-solid fa-chart-simple"></i></button></div><p id="locked-message" class="locked-message" role="status"></p></section>
+        <section class="quick-summary"><div class="section-heading"><span class="eyebrow-label">LIVE TELEMETRY</span><h2>Quick Summary</h2></div><div class="quick-grid">
+            <article class="quick-card current-task-card"><span class="quick-icon"><i class="fa-solid fa-crosshairs"></i></span><div><small>CURRENT TASK</small><strong id="current-task">Memuat quest...</strong><p id="current-task-time">Sistem membaca jadwal lokal</p></div></article>
+            <article class="quick-card"><span class="quick-icon streak-icon"><i class="fa-solid fa-fire"></i></span><div><small>DAILY STREAK</small><strong id="dashboard-streak">0 Hari Berturut-turut</strong><p>Isi jurnal untuk menjaga streak</p></div></article>
+            <article class="quick-card reset-card"><span class="quick-icon"><i class="fa-solid fa-broom"></i></span><div><small>NEW DAY PROTOCOL</small><strong>Siap mulai dari nol?</strong><p>Kosongkan log hari ini dan mulai quest baru.</p></div><button id="reset-day" class="reset-button" type="button"><i class="fa-solid fa-rotate-right"></i> Reset Hari Baru</button></article>
+        </div></section>
+        <section class="market-widgets"><div class="section-heading"><span class="eyebrow-label">WORLD SIGNALS</span><h2>Hari Ini di Dunia Nyata</h2></div><div class="widget-grid">
+            <article class="info-widget weather-widget"><span class="widget-icon"><i class="fa-solid fa-cloud-sun"></i></span><div><small>CUACA HARI INI · JAKARTA</small><strong id="weather-temp">--°C</strong><p id="weather-detail">Memuat kondisi cuaca...</p></div><span id="weather-status" class="widget-status">LIVE</span></article>
+            <article class="info-widget stock-widget"><span class="widget-icon"><i class="fa-solid fa-chart-line"></i></span><div><small>INDEX SAHAM · IHSG</small><strong id="stock-value">--</strong><p id="stock-detail">Memuat indeks pasar...</p></div><span id="stock-status" class="widget-status">LIVE</span></article>
+        </div></section>
+        <section id="focus-realm" class="focus-realm is-hidden" aria-labelledby="focus-title"><div class="focus-orbit"></div><button id="focus-close" class="focus-close" type="button" aria-label="Tutup Focus Realm"><i class="fa-solid fa-xmark"></i></button><span class="eyebrow-label"><i class="fa-solid fa-crosshairs"></i> FOCUS REALM · POMODORO PROTOCOL</span><h2 id="focus-title">Enter the zone.</h2><p>25 menit fokus untuk mengubah waktu menjadi momentum.</p><div class="focus-timer" id="focus-timer">25:00</div><div class="focus-controls"><button id="focus-start" type="button"><i class="fa-solid fa-play"></i> START FOCUS</button><button id="focus-reset" type="button"><i class="fa-solid fa-rotate-left"></i></button></div><small id="focus-status">READY · +50 EXP saat selesai</small></section>
+    </main>
+
+    <main id="gaming-screen" class="module-screen gaming-module is-hidden">
+        <header class="module-header gaming-header"><div class="module-title-group"><button id="gaming-back" class="back-dashboard" type="button"><i class="fa-solid fa-arrow-left"></i><span>Ke Dashboard</span></button><span class="module-kicker"><i class="fa-solid fa-gamepad"></i> PLAYER MODULE - SEASON 01</span><h1>Gaming Log <span>& Tracker</span></h1></div><div class="gaming-player-hud"><div class="gaming-avatar"><i class="fa-solid fa-user-astronaut"></i><span class="status-dot"></span></div><div class="gaming-player-copy"><small>PLAYER HUD STATUS</small><strong id="gaming-player-name">KALTZ</strong><div class="level-line"><span>LVL 24</span><div class="exp-track"><span id="gaming-exp-bar"></span></div><em id="gaming-exp-label">72% EXP</em></div></div><button id="gaming-audio-toggle" class="hud-icon-button" type="button" title="Toggle audio FX" aria-label="Toggle audio FX"><i class="fa-solid fa-volume-high"></i></button><button id="gaming-theme-toggle" class="theme-toggle" type="button" title="Ganti tema"><i class="fa-solid fa-sun"></i><span>Light</span></button><button id="gaming-logout" class="logout-button" type="button"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></button></div></header>
+        <section class="gaming-schedule"><div class="gaming-section-label"><i class="fa-solid fa-calendar-days"></i> JADWAL GAME RESMI HARI INI <span class="live-pill"><i class="fa-solid fa-circle"></i> LIVE</span></div><div class="schedule-grid"><article class="schedule-card session-one"><div class="schedule-title"><i class="fa-solid fa-gamepad"></i> SESI 1 <span>SORE</span><b>REWARD ACTIVE</b></div><strong>15.30 - 17.00 WIB</strong><p>Reward setelah belajar & melamar</p></article><article class="schedule-card session-two"><div class="schedule-title"><i class="fa-solid fa-gamepad"></i> SESI 2 <span>MALAM</span><b>UPCOMING</b></div><strong>19.30 - 20.30 WIB</strong><p>Main bersama / santai malam</p></article></div></section>
+        <section class="gaming-layout"><div class="gaming-form-panel"><div class="panel-heading"><div><span class="gaming-section-label"><i class="fa-solid fa-keyboard"></i> INPUT CONSOLE</span><h2>Log your session</h2></div><span class="panel-code">TC-LOG/01</span></div><form id="gaming-form"><div class="field-grid"><div class="field-block"><label for="game-name">NAMA GAME</label><input id="game-name" type="text" placeholder="Masukkan nama game..." required></div><div class="field-block"><label for="game-session">PILIH SESI</label><select id="game-session"><option>Sesi 1 (15.30 - 17.00)</option><option>Sesi 2 (19.30 - 20.30)</option><option>Free Play</option></select></div></div><div class="field-block"><label for="game-duration">DURASI MAIN <span>MENIT</span></label><div class="duration-input"><input id="game-duration" type="number" min="1" placeholder="90" required><div class="quick-duration" aria-label="Tambah durasi cepat"><button type="button" data-duration="15">+15m</button><button type="button" data-duration="30">+30m</button><button type="button" data-duration="60">+60m</button></div></div></div><div class="field-block"><label for="game-achievement">CATATAN ACHIEVEMENT</label><input id="game-achievement" type="text" placeholder="Contoh: Menang Divisi 1"></div><button class="gaming-submit" type="submit"><span><i class="fa-solid fa-floppy-disk"></i> SIMPAN CATATAN GAME</span><i class="fa-solid fa-arrow-right"></i></button><p id="gaming-message" class="login-message" role="status"></p></form></div><div class="gaming-summary"><div class="panel-heading"><div><span class="gaming-section-label"><i class="fa-solid fa-chart-simple"></i> LIVE TELEMETRY</span><h2>Session stats</h2></div><span class="signal-bars"><i></i><i></i><i></i></span></div><div class="gaming-stat-grid"><article class="gaming-stat stat-time"><i class="fa-solid fa-stopwatch"></i><small>TOTAL DURASI HARI INI</small><strong id="gaming-total">0<span>j 0m</span></strong></article><article class="gaming-stat stat-sessions"><i class="fa-solid fa-layer-group"></i><small>TOTAL SESI TERCATAT</small><strong id="gaming-session-count">0</strong><span>RUNS COMPLETE</span></article><article class="gaming-stat stat-exp"><i class="fa-solid fa-bolt"></i><small>EXP HARIAN DIPEROLEH</small><strong id="gaming-exp-total">0 <span>EXP</span></strong><div class="mini-exp-track"><span id="gaming-mini-exp-bar"></span></div></article></div><div class="gaming-history"><div class="history-toolbar"><div class="history-title"><i class="fa-solid fa-scroll"></i> ACTIVITY LOG</div><label class="history-search"><i class="fa-solid fa-magnifying-glass"></i><input id="gaming-search" type="search" placeholder="Search logs..." aria-label="Cari riwayat game"></label></div><div id="gaming-history-list"><p class="empty-state">Belum ada sesi gaming hari ini.</p></div></div></div></section>
+    </main>
+
+    <div id="journal-app" class="container is-hidden">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <h1><i class="fa-solid fa-book-journal-whills"></i> TimeCraft Journal</h1>
+            </div>
+            <div class="clock-card">
+                <div id="digital-clock">00:00:00 WIB</div>
+                <div id="current-date">Senin, 1 Januari 2026</div>
+            </div>
+            <div class="player-menu">
+                <div class="player-avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+                <div><span class="player-label">PLAYER</span><strong id="dashboard-player">Player</strong></div>
+                <button id="back-dashboard" class="back-dashboard" type="button" title="Kembali ke dashboard"><i class="fa-solid fa-house"></i><span>Menu</span></button>
+                <button id="theme-toggle" class="theme-toggle" type="button" title="Ganti tema" aria-label="Ganti tema"><i class="fa-solid fa-sun"></i><span>Light</span></button>
+                <button id="logout-button" class="logout-button" type="button" title="Logout"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></button>
+            </div>
+        </header>
+
+        <!-- Main Content Layout -->
+        <div class="main-content">
+            
+            <!-- Left Side: Time Log & Refleksi -->
+            <div class="left-pane">
+                
+                <!-- Time Log Section -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <h2 class="section-title"><i class="fa-solid fa-list-check"></i> Log Aktivitas Hari Ini</h2>
+                    </div>
+                    <div id="journal-slots-container">
+                        <!-- Loaded dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Reflection Section -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <h2 class="section-title"><i class="fa-solid fa-brain"></i> Refleksi Akhir Hari</h2>
+                    </div>
+                    <div class="reflection-group">
+                        <label><i class="fa-solid fa-trophy" style="color: #f59e0b;"></i> Pencapaian Hari Ini (Wins of the Day):</label>
+                        <textarea id="ref-wins" class="reflection-input" placeholder="Apa saja yang berhasil diselesaikan dengan baik hari ini?..."></textarea>
+
+                        <label><i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> Kendala / Hal yang Perlu Diperbaiki:</label>
+                        <textarea id="ref-blockers" class="reflection-input" placeholder="Adakah hal yang membuat waktu terbuang atau kurang produktif?..."></textarea>
+
+                        <label><i class="fa-solid fa-bullseye" style="color: #38bdf8;"></i> Target Utama Besok:</label>
+                        <textarea id="ref-tomorrow" class="reflection-input" placeholder="Prioritas paling penting untuk dikerjakan besok..."></textarea>
+
+                        <button class="btn-primary" onclick="saveFullJournal()"><i class="fa-solid fa-floppy-disk"></i> Simpan Jurnal Hari Ini</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Side: Sidebar & Riwayat -->
+            <div class="sidebar">
+                <!-- Legend Kategori -->
+                <div class="section-card" style="margin-bottom:0;">
+                    <h3 class="section-title" style="font-size: 0.95rem; margin-bottom: 12px;"><i class="fa-solid fa-palette"></i> Kategori</h3>
+                    <div style="font-size:0.8rem; display:flex; flex-direction:column; gap:6px;">
+                        <div><span class="color-dot" style="background: var(--cat-rutinitas);"></span> Rutinitas / Olahraga</div>
+                        <div><span class="color-dot" style="background: var(--cat-kerja);"></span> Melamar / Pekerjaan</div>
+                        <div><span class="color-dot" style="background: var(--cat-belajar);"></span> Belajar / Upgrade Skill</div>
+                        <div><span class="color-dot" style="background: var(--cat-game);"></span> Gaming / Hiburan</div>
+                        <div><span class="color-dot" style="background: var(--cat-istirahat);"></span> Istirahat / Makan</div>
+                    </div>
+                </div>
+
+                <!-- Riwayat Jurnal -->
+                <div class="section-card" style="margin-bottom:0;">
+                    <h3 class="section-title" style="font-size: 0.95rem; margin-bottom: 12px;"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Jurnal</h3>
+                    <div id="history-container" class="history-list">
+                        <!-- Loaded dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Eksternal -->
+    <script src="js/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profil Akun | TimeCraft</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/profile.css">
+    <script src="js/profile.js" defer></script>
+</head>
+<body>
+    <header class="profile-topbar">
+        <a class="profile-brand" href="index.html"><i class="fa-solid fa-hourglass-start"></i> TIMECRAFT</a>
+        <nav aria-label="Navigasi akun">
+            <a href="index.html"><i class="fa-solid fa-arrow-left"></i><span>Dashboard</span></a>
+            <button id="profile-logout" type="button"><i class="fa-solid fa-right-from-bracket"></i><span>Keluar</span></button>
+        </nav>
+    </header>
+
+    <main class="profile-shell">
+        <div id="profile-load-error" class="profile-alert" role="status" hidden></div>
+        <section class="identity-banner" aria-label="Identitas akun">
+            <div id="cover-preview" class="cover-art">
+                <label class="upload-control cover-upload" for="cover-file" title="Ganti foto sampul">
+                    <i class="fa-solid fa-camera"></i><span>Sampul</span>
+                </label>
+                <input id="cover-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            </div>
+            <div class="identity-row">
+                <div class="avatar-wrap">
+                    <div class="avatar-preview" id="avatar-preview"><span id="avatar-initials">TC</span></div>
+                    <label class="avatar-upload" for="avatar-file" title="Ganti foto profil" aria-label="Ganti foto profil"><i class="fa-solid fa-camera"></i></label>
+                    <input id="avatar-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                </div>
+                <div class="identity-copy">
+                    <span class="eyebrow">PLAYER PROFILE</span>
+                    <h1 id="identity-name">Memuat profil...</h1>
+                    <p id="identity-username">@player</p>
+                </div>
+                <div class="member-since"><small>BERGABUNG</small><strong id="member-since">-</strong></div>
+            </div>
+        </section>
+
+        <div class="profile-layout">
+            <section class="profile-section personal-section">
+                <div class="section-heading">
+                    <div><span class="section-kicker">IDENTITAS</span><h2>Informasi personal</h2></div>
+                    <i class="fa-regular fa-id-card section-icon"></i>
+                </div>
+                <form id="profile-form">
+                    <div class="form-grid">
+                        <label class="profile-field"><span>Nama lengkap</span><input name="fullName" maxlength="100" autocomplete="name" required></label>
+                        <label class="profile-field"><span>Username</span><input name="username" readonly aria-readonly="true"></label>
+                        <label class="profile-field field-wide"><span>Bio singkat</span><textarea name="bio" maxlength="240" rows="3" placeholder="Ceritakan sedikit tentang dirimu"></textarea></label>
+                        <label class="profile-field"><span>Tanggal lahir</span><input name="birthDate" type="date"></label>
+                        <label class="profile-field"><span>Jenis kelamin</span><select name="gender"><option value="">Pilih preferensi</option><option value="female">Perempuan</option><option value="male">Laki-laki</option><option value="non_binary">Non-biner</option><option value="prefer_not">Tidak ingin menyebutkan</option></select></label>
+                        <label class="profile-field"><span>Email</span><input name="email" type="email" maxlength="254" autocomplete="email" placeholder="nama@email.com"></label>
+                        <label class="profile-field"><span>Nomor telepon</span><input name="phone" type="tel" maxlength="25" autocomplete="tel" placeholder="+62 812 0000 0000"></label>
+                    </div>
+                    <p id="profile-status" class="form-status" role="status"></p>
+                    <button class="primary-action" type="submit"><i class="fa-solid fa-floppy-disk"></i> Simpan profil</button>
+                </form>
+            </section>
+
+            <aside class="profile-sidebar">
+                <section class="profile-section settings-section">
+                    <div class="section-heading">
+                        <div><span class="section-kicker">PREFERENSI</span><h2>Pengaturan akun</h2></div>
+                        <i class="fa-solid fa-sliders section-icon"></i>
+                    </div>
+                    <form id="settings-form">
+                        <label class="profile-field"><span>Visibilitas profil</span><select name="visibility"><option value="private">Pribadi</option><option value="public">Publik</option></select></label>
+                        <label class="profile-field"><span>Bahasa</span><select name="language"><option value="id">Bahasa Indonesia</option><option value="en">English</option></select></label>
+                        <label class="switch-row"><span><strong>Notifikasi</strong><small>Pengingat dan kabar akun</small></span><input name="notifications" type="checkbox"><span class="switch-track"></span></label>
+                        <p id="settings-status" class="form-status" role="status"></p>
+                        <button class="secondary-action" type="submit">Simpan pengaturan</button>
+                    </form>
+                </section>
+
+                <section class="profile-section password-section">
+                    <div class="section-heading">
+                        <div><span class="section-kicker">KEAMANAN</span><h2>Ubah password</h2></div>
+                        <i class="fa-solid fa-shield-halved section-icon"></i>
+                    </div>
+                    <form id="password-form">
+                        <label class="profile-field"><span>Password saat ini</span><input name="currentPassword" type="password" autocomplete="current-password" required></label>
+                        <label class="profile-field"><span>Password baru</span><input name="newPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+                        <label class="profile-field"><span>Ulangi password baru</span><input name="confirmPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+                        <p id="password-status" class="form-status" role="status"></p>
+                        <button class="secondary-action" type="submit">Perbarui password</button>
+                    </form>
+                </section>
+            </aside>
+
+            <section class="profile-section activity-section">
+                <div class="section-heading">
+                    <div><span class="section-kicker">REKAP AKUN</span><h2>Aktivitas & riwayat</h2></div>
+                    <a href="jurnal.html" class="text-action">Buka jurnal <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                </div>
+                <div class="activity-stats">
+                    <div><small>HARI JURNAL</small><strong id="journal-count">0</strong></div>
+                    <div><small>AKTIVITAS TERCATAT</small><strong id="activity-count">0</strong></div>
+                </div>
+                <div id="activity-list" class="activity-list"><p class="empty-activity">Memuat aktivitas...</p></div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

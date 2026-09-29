@@ -1,4 +1,5 @@
 const { createHash, randomBytes, scryptSync, timingSafeEqual } = require('node:crypto');
+const { tmpdir } = require('node:os');
 const { join, resolve, relative } = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const express = require('express');
@@ -9,12 +10,15 @@ const { rateLimit } = require('express-rate-limit');
 
 const rootDir = __dirname;
 const port = Number(process.env.PORT) || 3000;
-const db = new DatabaseSync(join(rootDir, 'timecraft.db'));
 const app = express();
 const sessionLifetime = 8 * 60 * 60 * 1000;
 const bcryptRounds = 12;
 
-db.exec(`
+let db;
+try {
+    const databasePath = process.env.VERCEL ? join(tmpdir(), 'timecraft.db') : join(rootDir, 'timecraft.db');
+    db = new DatabaseSync(databasePath);
+    db.exec(`
     PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS players (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +56,11 @@ db.exec(`
         notifications INTEGER NOT NULL DEFAULT 1,
         FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
     );
-`);
+    `);
+} catch (error) {
+    db = null;
+    console.error('SQLite initialization failed:', error);
+}
 
 const verifyLegacyPassword = (value, storedHash) => {
     if (storedHash.startsWith('scrypt:')) {
@@ -114,6 +122,10 @@ const authLimiter = rateLimit({
 app.use('/api', apiLimiter);
 app.use(express.json({ limit: '64kb', strict: true }));
 app.use(cookieParser());
+app.use('/api', (request, response, next) => {
+    if (!db) return response.status(503).json({ error: 'Database sementara tidak tersedia.' });
+    next();
+});
 app.use((request, response, next) => {
     if (request.path.startsWith('/api/')) response.set('Cache-Control', 'no-store');
     const origin = request.get('origin');
@@ -405,6 +417,10 @@ app.use((error, request, response, next) => {
     if (response.headersSent) return next(error);
     if (error.type === 'entity.too.large') return response.status(413).json({ error: 'Ukuran permintaan terlalu besar.' });
     if (error.type === 'entity.parse.failed' || error.status === 400) return response.status(400).json({ error: 'Format permintaan tidak valid.' });
+    if (typeof error.code === 'string' && error.code.includes('SQLITE')) {
+        console.error('SQLite request failed:', error);
+        return response.status(503).json({ error: 'Database sementara tidak tersedia.' });
+    }
     console.error('Request failed:', error);
     return response.status(500).json({ error: 'Terjadi kesalahan pada server.' });
 });

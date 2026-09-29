@@ -94,7 +94,7 @@ function ensureProfile(playerId) {
 }
 
 app.disable('x-powered-by');
-app.set('trust proxy', process.env.TRUST_PROXY === '1' ? 1 : false);
+app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false, hsts: false }));
 
 const apiLimiter = rateLimit({
@@ -119,7 +119,11 @@ app.use((request, response, next) => {
     const origin = request.get('origin');
     if (origin) {
         try {
-            if (new URL(origin).origin !== `${request.protocol}://${request.get('host')}`) return response.status(403).json({ error: 'Origin tidak diizinkan.' });
+            const allowedOrigins = new Set([`${request.protocol}://${request.get('host')}`]);
+            for (const vercelHost of [process.env.VERCEL_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]) {
+                if (vercelHost) allowedOrigins.add(`https://${vercelHost}`);
+            }
+            if (!allowedOrigins.has(new URL(origin).origin)) return response.status(403).json({ error: 'Origin tidak diizinkan.' });
         } catch {
             return response.status(403).json({ error: 'Origin tidak diizinkan.' });
         }

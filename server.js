@@ -95,23 +95,7 @@ function ensureProfile(playerId) {
 
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY === '1' ? 1 : false);
-app.use(helmet({
-    hsts: process.env.NODE_ENV === 'production' ? undefined : false,
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", 'https://cdn.tailwindcss.com', 'https://cdnjs.cloudflare.com'],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
-            fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
-            imgSrc: ["'self'", 'data:'],
-            connectSrc: ["'self'", 'https://wttr.in', 'https://query1.finance.yahoo.com'],
-            frameAncestors: ["'none'"],
-            baseUri: ["'self'"],
-            formAction: ["'self'"],
-            objectSrc: ["'none'"]
-        }
-    }
-}));
+app.use(helmet({ contentSecurityPolicy: false, hsts: false }));
 
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -379,7 +363,7 @@ app.get('/api/history', requireSession, (request, response) => {
 const publicPages = new Set(['gaming.html', 'gold.html', 'index.html', 'journal.html', 'jurnal.html', 'login.html', 'profile.html', 'register.html', 'study.html']);
 
 app.get('/', (request, response) => {
-    response.sendFile(resolve(rootDir, 'login.html'));
+    response.sendFile(resolve(__dirname, 'login.html'));
 });
 
 // Middleware untuk menyajikan file statis dan halaman publik
@@ -397,15 +381,20 @@ app.use((request, response, next) => {
 
     const filePath = resolve(rootDir, `.${decodedPath}`);
     const relativePath = relative(rootDir, filePath).replace(/\\/g, '/');
+    if (relativePath.startsWith('../') || relativePath === '..') {
+        return response.status(404).json({ error: 'File tidak ditemukan.' });
+    }
 
     // Izinkan jika merupakan file halaman publik ATAU file aset (.css, .js, gambar, font, dll)
-    const isPublicAsset = /^(assets|css|js)\//.test(relativePath) || /\.(css|js|png|jpg|jpeg|gif|svg|ico|json)$/i.test(relativePath);
+    const isPublicAsset = /^(assets|css|js)\//.test(relativePath) ||
+        /\.(css|js|png|jpe?g|gif|svg|ico|json|webp|avif|woff2?|ttf|otf|eot)$/i.test(relativePath);
 
-    if (!publicPages.has(relativePath) && !isPublicAsset) {
+    if (relativePath === 'server.js' || relativePath === 'package.json' || relativePath === 'vercel.json' ||
+        relativePath.endsWith('.db') || (!publicPages.has(relativePath) && !isPublicAsset)) {
         return response.status(404).json({ error: 'File tidak ditemukan.' });
     }
     next();
-}, express.static(rootDir, { dotfiles: 'deny', fallthrough: true, maxAge: 0 }));
+}, express.static(__dirname, { dotfiles: 'deny', fallthrough: true, maxAge: 0 }));
 
 app.use((request, response) => response.status(404).json({ error: 'Endpoint tidak ditemukan.' }));
 app.use((error, request, response, next) => {
@@ -416,4 +405,8 @@ app.use((error, request, response, next) => {
     return response.status(500).json({ error: 'Terjadi kesalahan pada server.' });
 });
 
-app.listen(port, () => console.log(`TimeCraft berjalan pada port ${port}`));
+if (require.main === module) {
+    app.listen(port, () => console.log(`TimeCraft berjalan pada port ${port}`));
+}
+
+module.exports = app;

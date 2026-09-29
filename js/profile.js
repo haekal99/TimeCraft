@@ -6,7 +6,6 @@ const profileRequest = async (path, options = {}) => {
     });
     const result = await response.json();
     if (!response.ok) {
-        if (response.status === 401) window.location.href = 'login.html';
         throw new Error(result.error || 'Permintaan profil gagal.');
     }
     return result;
@@ -18,6 +17,50 @@ const passwordForm = document.getElementById('password-form');
 let avatarData = '';
 let coverData = '';
 const escapeText = value => String(value).replace(/[&<>\'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+
+function cachedPlayer() {
+    try {
+        return JSON.parse(localStorage.getItem('tc_authenticated_player') || 'null');
+    } catch {
+        return null;
+    }
+}
+
+function accountStorageId(player = cachedPlayer()) {
+    const name = player?.name || player?.username;
+    return name ? `name-${encodeURIComponent(name.trim().toLowerCase())}` : 'local';
+}
+
+function profileStorageKey(player) {
+    return `tc_profile_${accountStorageId(player)}`;
+}
+
+function readCachedProfile(player) {
+    try {
+        return JSON.parse(localStorage.getItem(profileStorageKey(player)) || 'null');
+    } catch {
+        return null;
+    }
+}
+
+function cacheProfile(profile, activity, synced = true) {
+    try {
+        localStorage.setItem(profileStorageKey(profile), JSON.stringify({ profile, activity, synced, updatedAt: new Date().toISOString() }));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function profileIsEmpty(profile) {
+    return !profile.bio && !profile.birthDate && !profile.gender && !profile.email && !profile.phone &&
+        !profile.avatarData && !profile.coverData && profile.visibility === 'private' && profile.language === 'id' &&
+        profile.notifications === true && (!profile.fullName || profile.fullName === profile.username);
+}
+
+function profilePayload(profile) {
+    return Object.fromEntries(['fullName', 'bio', 'birthDate', 'gender', 'email', 'phone', 'visibility', 'language', 'notifications', 'avatarData', 'coverData'].map(key => [key, profile[key]]));
+}
 
 function setStatus(id, message, state = '') {
     const element = document.getElementById(id);
@@ -98,16 +141,24 @@ function renderProfile(profile, activity) {
     document.getElementById('member-since').textContent = profile.createdAt ? new Date(`${profile.createdAt.replace(' ', 'T')}Z`).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : '-';
     setImage(document.getElementById('avatar-preview'), avatarData, initials || 'TC');
     setImage(document.getElementById('cover-preview'), coverData);
-    renderActivity(activity, profile.playerId);
+    renderActivity(activity, profile);
 }
 
-function migrateLegacyActivity(playerId) {
+function migrateLegacyActivity(player) {
+    const accountId = accountStorageId(player);
     ['journal', 'study', 'gaming', 'gold'].forEach(key => {
         const legacyKey = `tc_module_${key}`;
-        const scopedKey = `tc_module_${playerId}_${key}`;
+        const scopedKey = `tc_module_${accountId}_${key}`;
+        const oldScopedKey = player.playerId ? `tc_module_${player.playerId}_${key}` : null;
         const legacyData = localStorage.getItem(legacyKey);
-        if (legacyData && !localStorage.getItem(scopedKey)) localStorage.setItem(scopedKey, legacyData);
-        if (legacyData) localStorage.removeItem(legacyKey);
+        const oldScopedData = oldScopedKey ? localStorage.getItem(oldScopedKey) : null;
+        if (!localStorage.getItem(scopedKey) && (oldScopedData || legacyData)) localStorage.setItem(scopedKey, oldScopedData || legacyData);
+    });
+    [['tc_gaming_', 'tc_gaming_'], ['tc_gaming_exp_', 'tc_gaming_exp_'], ['tc_focus_exp_', 'tc_focus_exp_']].forEach(([prefix, stablePrefix]) => {
+        if (!player.playerId) return;
+        const oldKey = `${prefix}${player.playerId}`;
+        const stableKey = `${stablePrefix}${accountId}`;
+        if (!localStorage.getItem(stableKey) && localStorage.getItem(oldKey)) localStorage.setItem(stableKey, localStorage.getItem(oldKey));
     });
 }
 
@@ -126,7 +177,8 @@ function activityTime(item) {
     return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-function buildLocalActivity(playerId) {
+function buildLocalActivity(player) {
+    const accountId = accountStorageId(player);
     const definitions = {
         journal: { title: item => item.title || 'Aktivitas jurnal', detail: item => `${item.category || 'Jurnal'} · ${item.note || ''}` },
         study: { title: item => item.topic || 'Catatan belajar', detail: item => `${item.type || 'Belajar'} · +${item.exp || 0} EXP` },
@@ -137,7 +189,7 @@ function buildLocalActivity(playerId) {
     Object.entries(definitions).forEach(([key, definition]) => {
         let records = [];
         try {
-            records = JSON.parse(localStorage.getItem(`tc_module_${playerId}_${key}`) || '[]');
+            records = JSON.parse(localStorage.getItem(`tc_module_${accountId}_${key}`) || '[]');
         } catch {
             records = [];
         }
@@ -151,7 +203,7 @@ function buildLocalActivity(playerId) {
     });
     let sessions = [];
     try {
-        sessions = JSON.parse(localStorage.getItem(`tc_gaming_${playerId}`) || '[]');
+        sessions = JSON.parse(localStorage.getItem(`tc_gaming_${accountId}`) || '[]');
     } catch {
         sessions = [];
     }
@@ -165,16 +217,40 @@ function buildLocalActivity(playerId) {
     return localItems;
 }
 
-function renderActivity(activity, playerId) {
-    migrateLegacyActivity(playerId);
-    const journalItems = activity.map(item => ({
+function localJournalActivity(player) {
+    const prefix = `tc_journal_${accountStorageId(player)}_`;
+    return Object.keys(localStorage).filter(key => key.startsWith(prefix)).flatMap(key => {
+        try {
+            const journal = JSON.parse(localStorage.getItem(key));
+            if (!journal?.date) return [];
+            const slots = Array.isArray(journal.slots) ? journal.slots : [];
+            const reflection = journal.reflection || {};
+            return [{
+                date: journal.date,
+                updatedAt: journal.updatedAt || journal.createdAt || new Date().toISOString(),
+                completedSlots: slots.filter(slot => typeof slot.log === 'string' && slot.log.trim()).length,
+                hasReflection: Object.values(reflection).some(value => typeof value === 'string' && value.trim())
+            }];
+        } catch {
+            return [];
+        }
+    });
+}
+
+function renderActivity(activity, player) {
+    migrateLegacyActivity(player);
+    const journalByDate = new Map(activity.map(item => [item.date, item]));
+    localJournalActivity(player).forEach(item => {
+        journalByDate.set(item.date, item);
+    });
+    const journalItems = [...journalByDate.values()].map(item => ({
         date: item.date,
-        time: new Date(`${item.updatedAt.replace(' ', 'T')}Z`).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        time: activityTime({ updatedAt: item.updatedAt }),
         title: 'Jurnal harian',
         detail: `${item.completedSlots} aktivitas${item.hasReflection ? ' · refleksi' : ''}`,
         kind: 'journal'
     }));
-    const timeline = [...journalItems, ...buildLocalActivity(playerId)].sort((left, right) => `${right.date} ${right.time}`.localeCompare(`${left.date} ${left.time}`));
+    const timeline = [...journalItems, ...buildLocalActivity(player)].sort((left, right) => `${right.date} ${right.time}`.localeCompare(`${left.date} ${left.time}`));
     const journalDates = new Set(journalItems.map(item => item.date));
     document.getElementById('journal-count').textContent = journalDates.size;
     document.getElementById('activity-count').textContent = timeline.length;
@@ -192,10 +268,34 @@ function renderActivity(activity, playerId) {
 }
 
 async function loadProfile() {
+    const cached = readCachedProfile();
     try {
         const result = await profileRequest('/api/profile');
-        renderProfile(result.profile, result.activity);
+        let profile = result.profile;
+        const activityByDate = new Map((result.activity || []).map(item => [item.date, item]));
+        (cached?.activity || []).forEach(item => {
+            if (!activityByDate.has(item.date)) activityByDate.set(item.date, item);
+        });
+        const activity = [...activityByDate.values()];
+        if (cached?.profile && (cached.synced === false || profileIsEmpty(profile))) {
+            profile = { ...cached.profile, playerId: result.profile.playerId, username: result.profile.username, createdAt: result.profile.createdAt };
+            const synced = await profileRequest('/api/profile', {
+                method: 'PUT',
+                body: JSON.stringify(profilePayload(profile))
+            }).then(() => true).catch(() => false);
+            cacheProfile(profile, activity, synced);
+        } else {
+            cacheProfile(profile, activity);
+        }
+        renderProfile(profile, activity);
     } catch (error) {
+        if (cached?.profile) {
+            renderProfile(cached.profile, cached.activity || []);
+            const alert = document.getElementById('profile-load-error');
+            alert.textContent = 'Menampilkan salinan profil di browser. Perubahan akan disinkronkan saat server tersedia.';
+            alert.hidden = false;
+            return;
+        }
         if (error.message) {
             const alert = document.getElementById('profile-load-error');
             alert.textContent = error.message;
@@ -221,13 +321,25 @@ async function saveProfile(event) {
         avatarData,
         coverData
     };
+    const existingCache = readCachedProfile();
+    const account = cachedPlayer();
+    const profile = {
+        ...existingCache?.profile,
+        ...payload,
+        playerId: account?.id || existingCache?.profile?.playerId,
+        username: account?.name || existingCache?.profile?.username || profileForm.elements.username.value,
+        createdAt: existingCache?.profile?.createdAt || ''
+    };
+    const activity = existingCache?.activity || [];
+    cacheProfile(profile, activity, false);
     try {
         await profileRequest('/api/profile', { method: 'PUT', body: JSON.stringify(payload) });
+        cacheProfile(profile, activity);
         document.getElementById('identity-name').textContent = payload.fullName;
         document.getElementById('avatar-initials').textContent = payload.fullName.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
         setStatus(statusId, 'Perubahan berhasil disimpan.', 'success');
-    } catch (error) {
-        setStatus(statusId, error.message, 'error');
+    } catch {
+        setStatus(statusId, 'Disimpan di browser. Sinkronisasi cloud akan dicoba lagi saat server tersedia.', 'success');
     }
 }
 

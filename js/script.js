@@ -1,3 +1,95 @@
+function accountStorageId(player = currentPlayer) {
+    const name = player?.name || activePlayerName;
+    return name && name !== 'Player' ? `name-${encodeURIComponent(name.trim().toLowerCase())}` : 'guest';
+}
+
+const journalSyncInFlight = new Map();
+const syncedJournalVersions = new Map();
+
+function journalStoragePrefix() {
+    return `tc_journal_${accountStorageId()}_`;
+}
+
+function journalStorageKey(date) {
+    return `${journalStoragePrefix()}${date}`;
+}
+
+function migrateAccountStorage(previousPlayer) {
+    if (!currentPlayer?.id) return;
+    const stableId = accountStorageId();
+    const rememberedName = localStorage.getItem('tc_player_name');
+    const sameAccount = [previousPlayer?.name, rememberedName].some(name => name?.trim().toLowerCase() === currentPlayer.name?.trim().toLowerCase());
+    const mappedPlayerId = localStorage.getItem(`tc_storage_player_id_${stableId}`);
+    const oldPlayerId = (sameAccount && previousPlayer?.id) || mappedPlayerId || null;
+    [
+        [`tc_gaming_${oldPlayerId}`, `tc_gaming_${stableId}`],
+        [`tc_gaming_exp_${oldPlayerId}`, `tc_gaming_exp_${stableId}`],
+        [`tc_focus_exp_${oldPlayerId}`, `tc_focus_exp_${stableId}`]
+    ].forEach(([oldKey, newKey]) => {
+        if (oldKey && !localStorage.getItem(newKey) && localStorage.getItem(oldKey)) localStorage.setItem(newKey, localStorage.getItem(oldKey));
+    });
+    ['journal', 'study', 'gaming', 'gold'].forEach(key => {
+        const stableKey = `tc_module_${stableId}_${key}`;
+        const oldKeys = [
+            oldPlayerId ? `tc_module_${oldPlayerId}_${key}` : null,
+            sameAccount ? `tc_module_${currentPlayer.id}_${key}` : null,
+            `tc_module_${key}`
+        ].filter(Boolean);
+        const oldData = oldKeys.map(oldKey => localStorage.getItem(oldKey)).find(Boolean);
+        if (!localStorage.getItem(stableKey) && oldData) localStorage.setItem(stableKey, oldData);
+    });
+    localStorage.setItem(`tc_storage_player_id_${stableId}`, String(currentPlayer.id));
+}
+
+function readLocalJournal(date) {
+    const scopedKey = journalStorageKey(date);
+    let raw = localStorage.getItem(scopedKey);
+    if (!raw) {
+        raw = localStorage.getItem(`tc_journal_${date}`);
+        if (raw && currentPlayer) localStorage.setItem(scopedKey, raw);
+    }
+    try {
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+function readLocalJournalHistory() {
+    const prefix = journalStoragePrefix();
+    const keys = Object.keys(localStorage).filter(key => key.startsWith(prefix) || /^tc_journal_\d{4}-\d{2}-\d{2}$/.test(key));
+    const entries = new Map();
+    keys.forEach(key => {
+        try {
+            const entry = JSON.parse(localStorage.getItem(key));
+            if (!entry?.date) return;
+            entries.set(entry.date, entry);
+            if (currentPlayer && !key.startsWith(prefix)) localStorage.setItem(journalStorageKey(entry.date), JSON.stringify(entry));
+        } catch {
+        }
+    });
+    return [...entries.values()];
+}
+
+async function syncLocalJournal(entry) {
+    if (!currentPlayer || !entry) return;
+    const key = `${accountStorageId()}:${entry.date}`;
+    const version = entry.updatedAt || JSON.stringify(entry);
+    if (syncedJournalVersions.get(key) === version) return;
+    if (journalSyncInFlight.has(key)) {
+        await journalSyncInFlight.get(key);
+        if (syncedJournalVersions.get(key) === version) return;
+    }
+    const request = apiRequest('/api/journal', { method: 'PUT', body: JSON.stringify(entry) });
+    journalSyncInFlight.set(key, request);
+    try {
+        await request;
+        syncedJournalVersions.set(key, version);
+    } catch {
+    } finally {
+        journalSyncInFlight.delete(key);
+    }
+}
 // Template Jadwal Rencana Default
 const defaultSlots = [
     { time: "05.00 - 06.00", plan: "Bangun Pagi, Ibadah & Olahraga", cat: "rutinitas", startHour: 5, log: "", energy: "Sedang" },
@@ -214,9 +306,15 @@ function setupLogin() {
 
     async function enterGame(name) {
         if (!currentPlayer) return;
+        let previousPlayer = null;
+        try {
+            previousPlayer = JSON.parse(localStorage.getItem('tc_authenticated_player') || 'null');
+        } catch {
+        }
         activePlayerName = name;
         document.body.dataset.playerName = name;
         if (document.getElementById('remember-player').checked) localStorage.setItem('tc_player_name', name);
+        migrateAccountStorage(previousPlayer);
         localStorage.setItem('tc_authenticated_player', JSON.stringify(currentPlayer));
         localStorage.removeItem('tc_guest_active');
         document.getElementById('dashboard-player').textContent = name;
@@ -372,21 +470,24 @@ function setupLogin() {
     }
 
     if (localStorage.getItem('tc_authenticated_player')) {
+        const cachedPlayer = JSON.parse(localStorage.getItem('tc_authenticated_player'));
         apiRequest('/api/me').then(result => {
             currentPlayer = result.player;
             enterGame(result.player.name);
         }).catch(() => {
-            localStorage.removeItem('tc_authenticated_player');
+            if (!cachedPlayer?.name) return;
+            currentPlayer = cachedPlayer;
+            enterGame(cachedPlayer.name);
         });
     }
 }
 
 function gamingStorageKey() {
-    return `tc_gaming_${currentPlayer?.id || activePlayerName}`;
+    return `tc_gaming_${accountStorageId()}`;
 }
 
 function gamingExpKey() {
-    return `tc_gaming_exp_${currentPlayer?.id || activePlayerName}`;
+    return `tc_gaming_exp_${accountStorageId()}`;
 }
 
 function getGamingExp() {
@@ -509,11 +610,16 @@ async function loadTodayJournal() {
     let parsed = null;
 
     if (currentPlayer) {
-        const result = await apiRequest(`/api/journal?date=${todayStr}`);
-        parsed = result.journal;
+        try {
+            const result = await apiRequest(`/api/journal?date=${todayStr}`);
+            parsed = result.journal || readLocalJournal(todayStr);
+            if (result.journal) localStorage.setItem(journalStorageKey(todayStr), JSON.stringify(result.journal));
+            else if (parsed) await syncLocalJournal(parsed);
+        } catch {
+            parsed = readLocalJournal(todayStr);
+        }
     } else {
-        const savedToday = localStorage.getItem(`tc_journal_${todayStr}`);
-        parsed = savedToday ? JSON.parse(savedToday) : null;
+        parsed = readLocalJournal(todayStr);
     }
 
     if (parsed) {
@@ -600,10 +706,9 @@ async function autoSaveToday() {
             tomorrow: document.getElementById('ref-tomorrow').value
         }
     };
+    localStorage.setItem(journalStorageKey(todayStr), JSON.stringify(dataToSave));
     if (currentPlayer) {
-        await apiRequest('/api/journal', { method: 'PUT', body: JSON.stringify(dataToSave) });
-    } else {
-        localStorage.setItem(`tc_journal_${todayStr}`, JSON.stringify(dataToSave));
+        await syncLocalJournal(dataToSave);
     }
 }
 
@@ -617,14 +722,23 @@ async function renderHistory() {
     const historyContainer = document.getElementById('history-container');
     historyContainer.innerHTML = '';
 
-    let entries;
+    let entries = [];
     if (currentPlayer) {
-        const result = await apiRequest('/api/history');
-        entries = result.history.map(entry => ({ key: entry.date, date: entry.date }));
-    } else {
-        const keys = Object.keys(localStorage).filter(k => k.startsWith('tc_journal_')).sort().reverse();
-        entries = keys.map(key => ({ key, date: JSON.parse(localStorage.getItem(key)).date }));
+        try {
+            const result = await apiRequest('/api/history');
+            entries = result.history.map(entry => ({ key: entry.date, date: entry.date }));
+        } catch {
+        }
     }
+    const localEntries = readLocalJournalHistory();
+    const dates = new Set(entries.map(entry => entry.date));
+    localEntries.forEach(entry => {
+        if (!dates.has(entry.date)) {
+            entries.push({ key: entry.date, date: entry.date });
+            dates.add(entry.date);
+            if (currentPlayer) syncLocalJournal(entry);
+        }
+    });
     if (!showAllJournalHistory) entries = entries.filter(entry => entry.date === selectedJournalDate());
 
     if (entries.length === 0) {
@@ -646,10 +760,22 @@ async function renderHistory() {
 }
 
 async function deleteJournalDate(date) {
+    localStorage.removeItem(journalStorageKey(date));
+    localStorage.removeItem(`tc_journal_${date}`);
+    try {
+        const profileKey = `tc_profile_${accountStorageId()}`;
+        const cachedProfile = JSON.parse(localStorage.getItem(profileKey) || 'null');
+        if (cachedProfile) {
+            cachedProfile.activity = (cachedProfile.activity || []).filter(entry => entry.date !== date);
+            localStorage.setItem(profileKey, JSON.stringify(cachedProfile));
+        }
+    } catch {
+    }
     if (currentPlayer) {
-        await apiRequest(`/api/journal?date=${encodeURIComponent(date)}`, { method: 'DELETE' });
-    } else {
-        localStorage.removeItem(`tc_journal_${date}`);
+        try {
+            await apiRequest(`/api/journal?date=${encodeURIComponent(date)}`, { method: 'DELETE' });
+        } catch {
+        }
     }
     if (date === selectedJournalDate()) {
         activeJournalCreatedAt = null;
@@ -663,21 +789,17 @@ async function deleteJournalDate(date) {
 }
 
 async function viewHistory(key) {
+    let entry = readLocalJournal(key);
     if (currentPlayer) {
-        const result = await apiRequest(`/api/journal?date=${encodeURIComponent(key)}`);
-        const entry = result.journal;
-        document.getElementById('journal-entry-date').value = entry.date;
-        activeJournalCreatedAt = entry.createdAt || entry.updatedAt || null;
-        activeSlots = entry.slots;
-        document.getElementById('ref-wins').value = entry.reflection.wins || '';
-        document.getElementById('ref-blockers').value = entry.reflection.blockers || '';
-        document.getElementById('ref-tomorrow').value = entry.reflection.tomorrow || '';
-        renderJournalSlots();
-        alert(`Menampilkan jurnal tanggal: ${entry.date}`);
-        return;
+        try {
+            const result = await apiRequest(`/api/journal?date=${encodeURIComponent(key)}`);
+            entry = result.journal || entry;
+            if (result.journal) localStorage.setItem(journalStorageKey(key), JSON.stringify(result.journal));
+            else if (entry) await syncLocalJournal(entry);
+        } catch {
+        }
     }
-    const storageKey = key.startsWith('tc_journal_') ? key : `tc_journal_${key}`;
-    const entry = JSON.parse(localStorage.getItem(storageKey));
+    if (!entry) return;
     document.getElementById('journal-entry-date').value = entry.date;
     activeJournalCreatedAt = entry.createdAt || entry.updatedAt || null;
     activeSlots = entry.slots;
@@ -709,7 +831,7 @@ function updateDashboard(now = new Date()) {
     const currentTaskTime = document.getElementById('current-task-time');
     if (currentTask) currentTask.textContent = activeSlot ? activeSlot.plan : 'Tidak ada quest aktif';
     if (currentTaskTime) currentTaskTime.textContent = activeSlot ? `Saat ini · ${activeSlot.time} WIB` : 'Waktu bebas';
-    const focusExp = Number(localStorage.getItem(`tc_focus_exp_${currentPlayer?.id || activePlayerName}`) || 0);
+    const focusExp = Number(localStorage.getItem(`tc_focus_exp_${accountStorageId()}`) || 0);
     const expPercent = Math.min(100, Math.max(25, focusExp % 100 || 25));
     document.getElementById('dashboard-energy-bar')?.style.setProperty('width', '82%');
     document.getElementById('dashboard-exp-bar')?.style.setProperty('width', `${expPercent}%`);
@@ -756,7 +878,7 @@ function renderFocusTimer() {
 
 function completeFocusSession() {
     stopFocusTimer();
-    const key = `tc_focus_exp_${currentPlayer?.id || activePlayerName}`;
+    const key = `tc_focus_exp_${accountStorageId()}`;
     localStorage.setItem(key, String(Number(localStorage.getItem(key) || 0) + 50));
     focusSeconds = 25 * 60;
     renderFocusTimer();

@@ -21,7 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const getModulePlayerId = () => {
     try {
-        return JSON.parse(localStorage.getItem('tc_authenticated_player') || 'null')?.id || 'local';
+        const player = JSON.parse(localStorage.getItem('tc_authenticated_player') || 'null');
+        return player?.name ? `name-${encodeURIComponent(player.name.trim().toLowerCase())}` : player?.id || 'local';
     } catch {
         return 'local';
     }
@@ -49,13 +50,16 @@ const formatDate = value => new Date(`${value}T12:00:00`).toLocaleDateString('id
 
 function migrateLegacyModuleData() {
     const player = JSON.parse(localStorage.getItem('tc_authenticated_player') || 'null');
-    if (!player?.id) return;
+    if (!player) return;
     ['journal', 'study', 'gaming', 'gold'].forEach(key => {
         const legacyKey = `tc_module_${key}`;
-        const scopedKey = `tc_module_${player.id}_${key}`;
+        const scopedKey = storage(key);
+        const oldScopedKey = player.id ? `tc_module_${player.id}_${key}` : null;
         const legacyData = localStorage.getItem(legacyKey);
-        if (legacyData && !localStorage.getItem(scopedKey)) localStorage.setItem(scopedKey, legacyData);
-        if (legacyData) localStorage.removeItem(legacyKey);
+        const oldScopedData = oldScopedKey ? localStorage.getItem(oldScopedKey) : null;
+        if (!localStorage.getItem(scopedKey) && (oldScopedData || legacyData)) {
+            localStorage.setItem(scopedKey, oldScopedData || legacyData);
+        }
     });
 }
 
